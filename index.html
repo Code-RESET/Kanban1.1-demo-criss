@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0D0A18">
+<meta name="description" content="Demo de trazabilidad de piezas para fabricación de gabinetes eléctricos. Desarrollado por Code Reset.">
+<title>Demo Trazabilidad de Gabinetes · Code Reset</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%230D0A18%27/%3E%3Crect x=%276%27 y=%278%27 width=%275%27 height=%2716%27 rx=%271.5%27 fill=%27%239B7BF7%27/%3E%3Crect x=%2713.5%27 y=%278%27 width=%275%27 height=%2710%27 rx=%271.5%27 fill=%27%23F0A43A%27/%3E%3Crect x=%2721%27 y=%278%27 width=%275%27 height=%2713%27 rx=%271.5%27 fill=%27%233DDC84%27/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+html, body { margin: 0; }
+/* Layout: one dark control-room screen — title, one guide line, kit lines, the board (hero), flow metric, piece detail on demand, folded log */
+:root {
+  --bg: #0D0A18; --surface: #151126; --surface-2: #1C1733; --line: #2D2748; --fg: #ECE9F8; --muted: #958EB4;
+  --accent: #9B7BF7; --accent-ink: #120B2A;
+  --amber: #F0A43A; --red: #F2545B; --red-bg: #2A1222; --green: #3DDC84; --green-bg: #102A1E;
+  --g1: #8FB8FF; --g1-bg: #18233F; --g2: #D3A6FF; --g2-bg: #2A1C42;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 22px 40px; }
+.wrap { max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent); }
+h1 { margin: 2px 0 0; font-size: clamp(26px, 4.5vw, 36px); font-weight: 700; line-height: 1.1; letter-spacing: -0.01em; text-wrap: balance; }
+
+.top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 14px; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.clock-min { font-size: 18px; font-weight: 500; color: var(--muted); padding-right: 6px; }
+button { font-family: var(--font-body); font-size: 15px; font-weight: 600; border-radius: 10px; cursor: pointer; min-height: 44px; padding: 0 16px; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn-primary { background: var(--accent); color: var(--accent-ink); border: 1px solid var(--accent); }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-ghost { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+.btn-ghost:hover { border-color: var(--muted); }
+button:disabled { opacity: 0.4; cursor: not-allowed; filter: none; }
+
+.guide-min { margin: 0; display: flex; gap: 12px; align-items: baseline; max-width: 88ch; }
+.step-min { flex: none; font-size: 12px; color: var(--accent); }
+
+.kits-min { display: flex; flex-wrap: wrap; gap: 10px 28px; align-items: center; }
+.kit-line { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.bar { width: 90px; height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; display: block; }
+.bar i { display: block; height: 100%; background: var(--green); }
+.num { font-family: var(--font-mono); font-weight: 600; }
+.late-n { color: var(--red); font-weight: 600; font-size: 13px; }
+.hint { color: var(--muted); font-size: 13px; }
+.linkbtn { min-height: 32px; padding: 0 12px; font-size: 13px; background: var(--green); color: #06180E; border: none; }
+.pill-ok { color: var(--green); font-size: 13px; font-weight: 600; }
+
+.board-scroll { overflow-x: auto; padding: 6px 2px 8px; }
+.board { display: grid; grid-template-columns: repeat(7, minmax(172px, 1fr)); gap: 10px; min-width: 1250px; }
+.col { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 0 10px 12px; display: flex; flex-direction: column; gap: 8px; min-height: 300px; }
+.col-head { display: flex; justify-content: center; align-items: center; gap: 8px; padding: 12px 0 10px; margin: 0 -10px 4px; border-bottom: 1px solid var(--line); font-family: var(--font-mono); font-size: 13px; color: var(--muted); }
+.col-head .n { font-size: 12px; font-weight: 600; min-width: 22px; text-align: center; border-radius: 6px; padding: 1px 6px; background: var(--surface-2); color: var(--muted); }
+.col.proc .col-head { color: var(--amber); }
+.col.kit { border-color: color-mix(in srgb, var(--green) 40%, var(--line)); }
+.col.kit .col-head { color: var(--green); }
+.col.ens .col-head { color: var(--fg); }
+.col.neck { border-color: var(--red); background: linear-gradient(var(--red-bg), var(--surface) 70%); box-shadow: 0 0 28px -6px color-mix(in srgb, var(--red) 55%, transparent); }
+.col.neck .col-head { color: var(--red); border-bottom-color: color-mix(in srgb, var(--red) 40%, var(--line)); }
+.col.neck .col-head .n { background: var(--red); color: #1A0508; }
+.neck-tag { font-family: var(--font-mono); font-size: 11px; color: var(--red); text-align: center; margin-top: -4px; }
+
+.card { --stripe: var(--muted); background: var(--surface-2); border: 1px solid var(--line); border-left: 3px solid var(--stripe); border-radius: 8px; padding: 9px 10px; display: flex; flex-direction: column; gap: 5px; cursor: pointer; text-align: left; color: var(--fg); width: 100%; min-height: 0; font-weight: 400; }
+.card:hover { border-color: var(--muted); border-left-color: var(--stripe); }
+.col.proc .card { --stripe: var(--amber); }
+.col.neck .card { --stripe: var(--red); }
+.col.kit .card { --stripe: var(--green); }
+.card.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
+.card.late { background: var(--red-bg); border-color: var(--red); --stripe: var(--red); }
+.card .nm { font-weight: 600; font-size: 14px; line-height: 1.25; display: flex; justify-content: space-between; gap: 6px; }
+.card .ok { color: var(--green); }
+.card .row { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.late-t { margin-left: auto; color: var(--red); font-weight: 600; font-family: var(--font-mono); }
+.gab { font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; border-radius: 4px; padding: 1px 6px; }
+.gab.g124 { background: var(--g1-bg); color: var(--g1); }
+.gab.g126 { background: var(--g2-bg); color: var(--g2); }
+.gcard { background: var(--surface-2); border: 1px solid var(--line); border-left: 3px solid var(--fg); border-radius: 8px; padding: 9px 10px; display: flex; flex-direction: column; gap: 5px; }
+.empty-col { font-size: 12px; color: var(--muted); text-align: center; padding: 6px 2px; }
+
+.metric { display: flex; align-items: center; gap: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 20px; }
+.metric.bad { border-color: var(--red); }
+.metric svg { flex: none; width: 30px; height: 30px; color: var(--muted); }
+.metric.bad svg { color: var(--red); }
+.metric .lbl { font-family: var(--font-mono); font-size: 13px; color: var(--muted); }
+.metric .val { font-size: 28px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.metric.bad .val { color: var(--red); }
+.metric .side { margin-left: auto; text-align: right; max-width: 34ch; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.detail-min { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; }
+.who { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.route { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.route span { font-size: 12.5px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); color: var(--muted); }
+.route span.done { color: var(--green); border-color: color-mix(in srgb, var(--green) 35%, var(--line)); }
+.route span.now { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.route em { color: var(--muted); font-style: normal; font-size: 12px; }
+
+.log-min summary { cursor: pointer; font-family: var(--font-mono); font-size: 14px; color: var(--muted); padding: 8px 0; min-height: 44px; display: flex; gap: 10px; align-items: center; }
+.log-min summary:focus-visible { outline: 2px solid var(--accent); }
+.log-scroll { overflow-x: auto; max-height: 340px; overflow-y: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 520px; }
+th { text-align: left; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.08em; color: var(--muted); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--bg); }
+td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr.fresh td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+@media (prefers-reduced-motion: no-preference) { .col, .card { transition: background-color .4s ease, border-color .3s ease, box-shadow .4s ease; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div><div class="eyebrow">Trazabilidad · demo</div><h1>Planta de gabinetes</h1></div>
+    <div class="controls">
+      <b class="clock-min mono" id="clock">Mar 08:00</b>
+      <button type="button" class="btn-ghost" id="btnReset">Reiniciar</button>
+      <button type="button" class="btn-primary" id="btnNext">Siguiente paso</button>
+    </div>
+  </header>
+
+  <p class="guide-min" aria-live="polite"><span class="mono step-min" id="stepNo">0/11</span><span id="guideText"></span></p>
+
+  <div class="kits-min" id="kits"></div>
+
+  <div class="board-scroll" role="region" aria-label="Tablero Kanban de estaciones" tabindex="0">
+    <div class="board" id="board"></div>
+  </div>
+
+  <div class="metric" id="metric"></div>
+
+  <section class="panel" id="detailWrap" hidden><div id="detail" style="display:flex;flex-direction:column;gap:12px"></div></section>
+
+  <details class="log-min">
+    <summary>Bitácora de escaneos · <span id="logN">0</span></summary>
+    <div class="log-scroll"><table>
+      <thead><tr><th>hora</th><th>pieza</th><th>movimiento</th><th>escaneó</th></tr></thead>
+      <tbody id="log"></tbody>
+    </table></div>
+  </details>
+
+  <footer class="hint" style="text-align:center;padding-top:8px">Demo con datos de ejemplo · Desarrollado por <b style="color:var(--fg)">Code Reset</b> · Aplicaciones a tu medida.</footer>
+</div>
+
+<script>
+const STATIONS = ['Por cortar', 'Corte', 'Doblez', 'Soldadura', 'Pintura', 'Rack de kit'];
+const ROUTES = { puerta: [0,1,2,3,4,5], lateral: [0,1,2,4,5], techo: [0,1,2,3,4,5], placa: [0,1,2,5], charola: [0,1,2,4,5] };
+const OPERATOR = { 'Por cortar': 'Supervisor', 'Corte': 'Luis (Corte)', 'Doblez': 'Marta (Doblez)', 'Soldadura': 'Juan (Soldadura)', 'Pintura': 'Pedro (Pintura)', 'Rack de kit': 'Almacén' };
+const LATE = 8 * 60;
+const DAYS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+const START = 24 * 60 + 8 * 60;
+
+const SCRIPT = [
+  { text: 'Es martes, 8:00 a. m. Hay dos gabinetes en proceso. Cada tarjeta del tablero es una pieza física con su código QR, y cada columna es una estación de la planta. Toca «Siguiente paso» para ver un turno de trabajo, o toca cualquier pieza para escanearla tú.' },
+  { act: 'move', id: 'PZ-0124-01', dt: 35, text: 'Juan termina de soldar la puerta del GAB-0124 y escanea su QR. La pieza pasa a Pintura y la bitácora guarda quién, cuándo y de dónde a dónde.' },
+  { act: 'move', id: 'PZ-0124-04', dt: 50, text: 'El techo del GAB-0124 sale del horno. Pedro le vuelve a amarrar su tarjeta viajera, lo deja en el rack de kit y lo escanea. El semáforo del 124 sube.' },
+  { act: 'move', id: 'PZ-0126-02', dt: 20, text: 'Mientras tanto, un lateral del GAB-0126 pasa de Doblez a Pintura. Ahora Pintura acumula 3 piezas y el tablero la marca como cuello de botella: ahí se frena el flujo. Las piezas de dos gabinetes conviven en la estación, pero cada QR dice a cuál pertenece.' },
+  { act: 'none', id: 'PZ-0124-06', dt: 30, text: 'Alerta: la charola del GAB-0124 lleva más de 8 horas sin moverse y el tablero la marca en rojo. El supervisor revisa y descubre que nunca se cortó. Sin el sistema, esto se habría descubierto el día de la entrega.' },
+  { act: 'move', id: 'PZ-0124-06', dt: 25, text: 'El supervisor manda cortar la charola de inmediato. Luis la corta y la escanea. La alerta desaparece porque la pieza ya se movió.' },
+  { act: 'move', id: 'PZ-0124-06', dt: 45, text: 'La charola pasa a Doblez. Revisa su ruta en el panel de la pieza: no pasa por Soldadura. Cada tipo de pieza tiene su propio recorrido.' },
+  { act: 'move', id: 'PZ-0124-01', dt: 40, text: 'La puerta del GAB-0124 sale de pintura y llega al rack. El kit va 5 de 6: solo falta la charola.' },
+  { act: 'move', id: 'PZ-0124-06', dt: 30, text: 'La charola entra a Pintura. Antes del horno se le quita la tarjeta viajera y se cuelga en el mismo gancho.' },
+  { act: 'move', id: 'PZ-0124-06', dt: 120, text: 'La charola llega al rack. El GAB-0124 tiene su kit completo, 6 de 6, y se activa el botón «Liberar a ensamble».' },
+  { act: 'release', gab: '124', dt: 10, text: 'El supervisor libera el GAB-0124. Sus 6 piezas pasan juntas a Ensamble como un solo gabinete. Así nunca se empieza a ensamblar con piezas faltantes.' },
+  { act: 'move', id: 'PZ-0126-01', dt: 30, text: 'La puerta del GAB-0126 pasa a Doblez y el turno sigue. Fin del recorrido. Ahora toca cualquier pieza y escanéala tú para practicar.' }
+];
+
+let S;
+function fresh() {
+  const c = START;
+  const P = (gab, n, name, type, pos, ago) => ({ id: `PZ-0${gab}-0${n}`, gab, name, type, pos, since: c - ago, hist: [] });
+  S = {
+    clock: c, step: 0, sel: null, freshLog: null,
+    gabs: { '124': { entrega: 'Mié 18:00', released: false }, '126': { entrega: 'Vie 18:00', released: false } },
+    pieces: [
+      P('124', 1, 'Puerta frontal', 'puerta', 3, 150),
+      P('124', 2, 'Lateral izquierdo', 'lateral', 4, 300),
+      P('124', 3, 'Lateral derecho', 'lateral', 4, 280),
+      P('124', 4, 'Techo', 'techo', 4, 120),
+      P('124', 5, 'Placa de montaje', 'placa', 3, 400),
+      P('124', 6, 'Charola portacables', 'charola', 0, 26 * 60),
+      P('126', 1, 'Puerta frontal', 'puerta', 1, 60),
+      P('126', 2, 'Lateral izquierdo', 'lateral', 2, 90),
+      P('126', 3, 'Lateral derecho', 'lateral', 0, 30),
+      P('126', 4, 'Techo', 'techo', 0, 30),
+      P('126', 5, 'Placa de montaje', 'placa', 1, 30),
+      P('126', 6, 'Charola portacables', 'charola', 0, 30)
+    ],
+    log: []
+  };
+}
+
+const st = p => ROUTES[p.type][p.pos];
+const last = p => p.pos === ROUTES[p.type].length - 1;
+const fmt = m => `${DAYS[Math.floor(m / 1440) % 7]} ${String(Math.floor(m % 1440 / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+const dur = m => { const h = Math.floor(m / 60), mm = m % 60; return h ? `${h} h ${mm} min` : `${mm} min`; };
+const isLate = p => !last(p) && S.clock - p.since > LATE;
+const byId = id => S.pieces.find(p => p.id === id);
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+
+function move(p) {
+  if (!p || last(p) || S.gabs[p.gab].released) return false;
+  const from = STATIONS[st(p)];
+  p.pos++;
+  const to = STATIONS[st(p)];
+  p.since = S.clock;
+  const entry = { t: S.clock, id: p.id, name: p.name, gab: p.gab, mv: `${from} → ${to}`, op: OPERATOR[from] };
+  S.log.unshift(entry); p.hist.push(entry); S.freshLog = entry;
+  return true;
+}
+function release(gab) {
+  const ps = S.pieces.filter(p => p.gab === gab);
+  if (S.gabs[gab].released || !ps.every(last)) return false;
+  S.gabs[gab].released = true;
+  const entry = { t: S.clock, id: `GAB-0${gab}`, name: 'Gabinete completo (6 piezas)', gab, mv: 'Rack de kit → Ensamble', op: 'Supervisor' };
+  S.log.unshift(entry); S.freshLog = entry;
+  if (S.sel && byId(S.sel).gab === gab) S.sel = null;
+  return true;
+}
+
+function nextStep() {
+  if (S.step >= SCRIPT.length - 1) return;
+  S.step++;
+  const s = SCRIPT[S.step];
+  S.clock += s.dt || 0;
+  S.freshLog = null;
+  if (s.act === 'move') { move(byId(s.id)); S.sel = s.id; }
+  if (s.act === 'none') S.sel = s.id;
+  if (s.act === 'release') release(s.gab);
+  render();
+}
+
+function neckIndex() {
+  let best = -1, max = 2;
+  for (let i = 1; i <= 4; i++) {
+    const n = S.pieces.filter(p => st(p) === i && !S.gabs[p.gab].released).length;
+    if (n > max) { max = n; best = i; }
+  }
+  return best;
+}
+
+function renderBoard() {
+  const neck = neckIndex();
+  const cols = STATIONS.map((name, i) => {
+    const ps = S.pieces.filter(p => st(p) === i && !S.gabs[p.gab].released);
+    const cards = ps.map(p => {
+      const late = isLate(p);
+      return `<button type="button" class="card${late ? ' late' : ''}${S.sel === p.id ? ' sel' : ''}" data-id="${p.id}" aria-label="${esc(p.name)} del GAB-0${p.gab}, ${STATIONS[st(p)]}">
+        <span class="nm">${esc(p.name)}${i === 5 ? '<span class="ok" aria-hidden="true">✓</span>' : ''}</span>
+        <span class="row"><span class="gab g${p.gab}">GAB-0${p.gab}</span>${late ? `<span class="late-t">${Math.floor((S.clock - p.since) / 60)} h</span>` : ''}</span>
+      </button>`;
+    }).join('');
+    const cls = i === neck ? 'neck' : i === 5 ? 'kit' : i === 0 ? '' : 'proc';
+    return `<div class="col ${cls}"><div class="col-head"><span>${name.toLowerCase()}</span><span class="n">${ps.length}</span></div>${i === neck ? '<div class="neck-tag">cuello de botella</div>' : ''}${cards || '<span class="empty-col">—</span>'}</div>`;
+  });
+  const relIds = Object.entries(S.gabs).filter(([, g]) => g.released).map(([id]) => id);
+  const rel = relIds.map(id =>
+    `<div class="gcard"><span class="nm" style="font-weight:600;font-size:14px">Gabinete completo</span><span class="row" style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted)"><span class="gab g${id}">GAB-0${id}</span><span>6/6</span></span></div>`).join('');
+  cols.push(`<div class="col ens"><div class="col-head"><span>ensamble</span><span class="n">${relIds.length}</span></div>${rel || '<span class="empty-col">solo kits completos</span>'}</div>`);
+  document.getElementById('board').innerHTML = cols.join('');
+}
+
+function renderMetric() {
+  const active = S.pieces.filter(p => !last(p) && !S.gabs[p.gab].released);
+  const avg = active.length ? Math.round(active.reduce((a, p) => a + (S.clock - p.since), 0) / active.length) : 0;
+  const late = active.filter(isLate).length;
+  const bad = avg > 4 * 60;
+  const el = document.getElementById('metric');
+  el.className = 'metric' + (bad ? ' bad' : '');
+  el.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9.5 2.5h5"/></svg>
+    <div><div class="lbl">tiempo promedio de una pieza en su estación</div><div class="val">${dur(avg)}</div></div>
+    <div class="side hint">${late ? `${late} pieza${late > 1 ? 's' : ''} lleva${late > 1 ? 'n' : ''} más de 8 h sin moverse. Eso sube el promedio.` : 'Sin piezas atoradas. El flujo va parejo.'}</div>`;
+}
+
+function renderKits() {
+  document.getElementById('kits').innerHTML = Object.entries(S.gabs).map(([id, g]) => {
+    const ps = S.pieces.filter(p => p.gab === id);
+    const ready = ps.filter(last).length, total = ps.length;
+    const lateN = ps.filter(isLate).length;
+    let tail;
+    if (g.released) tail = '<span class="pill-ok">En ensamble</span>';
+    else if (ready === total) tail = `<button type="button" class="linkbtn" data-release="${id}">Liberar a ensamble</button>`;
+    else if (lateN) tail = `<span class="late-n">${lateN} atorada${lateN > 1 ? 's' : ''}</span>`;
+    else tail = `<span class="hint" style="font-size:13px">Entrega ${g.entrega}</span>`;
+    return `<div class="kit-line"><span class="gab g${id}">GAB-0${id}</span>
+      <span class="bar" role="img" aria-label="${ready} de ${total} piezas listas"><i style="width:${ready / total * 100}%"></i></span>
+      <span class="num">${ready}/${total}</span>${tail}</div>`;
+  }).join('');
+}
+
+function renderDetail() {
+  const wrap = document.getElementById('detailWrap'), el = document.getElementById('detail');
+  const p = S.sel && byId(S.sel);
+  wrap.hidden = !p;
+  if (!p) { el.innerHTML = ''; return; }
+  const route = ROUTES[p.type].map((s, i) => `<span class="${i < p.pos ? 'done' : i === p.pos ? 'now' : ''}">${STATIONS[s]}</span>`).join('<em>›</em>');
+  const nextName = last(p) ? null : STATIONS[ROUTES[p.type][p.pos + 1]];
+  el.innerHTML = `<div class="detail-min">
+      <div class="who"><span style="font-weight:600;font-size:16px">${esc(p.name)} <span class="gab g${p.gab}">GAB-0${p.gab}</span></span>
+        <span class="mono" style="font-size:13px;color:var(--muted)">${p.id} · ${dur(S.clock - p.since)} en ${STATIONS[st(p)]}</span></div>
+      ${nextName ? `<button type="button" class="btn-primary" data-scan="${p.id}">Escanear → ${nextName}</button>` : '<span class="hint">Lista en rack, esperando a su kit</span>'}
+    </div>
+    <div class="route">${route}</div>`;
+}
+
+function renderLog() {
+  const rows = S.log.map(e => `<tr class="${e === S.freshLog ? 'fresh' : ''}"><td class="mono">${fmt(e.t)}</td><td><span class="mono">${e.id}</span><br><span style="color:var(--muted);font-size:12.5px">${esc(e.name)}</span></td><td>${esc(e.mv)}</td><td>${esc(e.op)}</td></tr>`).join('');
+  document.getElementById('log').innerHTML = rows || '<tr><td colspan="4" class="hint">Aún no hay escaneos.</td></tr>';
+  document.getElementById('logN').textContent = S.log.length;
+}
+
+function render() {
+  document.getElementById('clock').textContent = fmt(S.clock);
+  document.getElementById('stepNo').textContent = `${S.step}/${SCRIPT.length - 1}`;
+  document.getElementById('guideText').textContent = SCRIPT[S.step].text;
+  document.getElementById('btnNext').disabled = S.step >= SCRIPT.length - 1;
+  renderBoard(); renderKits(); renderMetric(); renderDetail(); renderLog();
+}
+
+document.addEventListener('click', e => {
+  const card = e.target.closest('[data-id]');
+  if (card) { S.sel = S.sel === card.dataset.id ? null : card.dataset.id; S.freshLog = null; render(); return; }
+  const scan = e.target.closest('[data-scan]');
+  if (scan) { S.clock += 15; S.freshLog = null; move(byId(scan.dataset.scan)); render(); return; }
+  const rel = e.target.closest('[data-release]');
+  if (rel && !rel.disabled) { S.freshLog = null; release(rel.dataset.release); render(); }
+});
+document.getElementById('btnNext').addEventListener('click', nextStep);
+document.getElementById('btnReset').addEventListener('click', () => { fresh(); render(); });
+
+fresh(); render();
+</script>
+</body>
+</html>
